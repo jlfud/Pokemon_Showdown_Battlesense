@@ -16,7 +16,7 @@ The system consists of four main components connected via a simple HTTP API:
 ### 1. Data Pipeline (`src/data/`)
 
 **Parser** (`parse_logs.py`)
-- Downloads Gen 9 OU replays from Hugging Face dataset `milkkarten/pokemon-showdown-replays-merged`
+- Downloads Gen 8 OU replays from Hugging Face dataset `milkkarten/pokemon-showdown-replays-merged`
 - Filters battles with player ratings between 1200-1800
 - Samples 50,000-100,000 battles randomly
 - Parses Pokemon Showdown log format into structured game states
