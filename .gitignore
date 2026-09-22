@@ -6,6 +6,10 @@ venv/
 data/raw/*.jsonl
 data/processed/
 
+# Trained artifacts (regenerate from data)
+models/*.json
+models/*.joblib
+
 # Python cache
 __pycache__/
 *.pyc

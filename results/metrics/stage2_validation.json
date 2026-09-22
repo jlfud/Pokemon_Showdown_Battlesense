@@ -1,0 +1,52 @@
+{
+  "by_action_type": {
+    "move": {
+      "combined_top_1": 0.2439116311623984,
+      "combined_top_3": 0.5309488343712424,
+      "conditional_top_1": 0.3307370650203693,
+      "conditional_top_3": 0.661043412716929,
+      "examples": 55721
+    },
+    "switch": {
+      "combined_top_1": 0.24523783607271143,
+      "combined_top_3": 0.4919995646021552,
+      "conditional_top_1": 0.39534124306084684,
+      "conditional_top_3": 0.8275280287362577,
+      "examples": 18374
+    }
+  },
+  "by_turn": {
+    "1-10": {
+      "examples": 27342,
+      "top_1_accuracy": 0.2290249433106576,
+      "top_3_accuracy": 0.493050983834394
+    },
+    "11-20": {
+      "examples": 22306,
+      "top_1_accuracy": 0.2459876266475388,
+      "top_3_accuracy": 0.5252846767685825
+    },
+    "21-30": {
+      "examples": 13034,
+      "top_1_accuracy": 0.257250268528464,
+      "top_3_accuracy": 0.5396654902562529
+    },
+    "31+": {
+      "examples": 11413,
+      "top_1_accuracy": 0.26242004731446594,
+      "top_3_accuracy": 0.5601507053360203
+    }
+  },
+  "combined": {
+    "top_1_accuracy": 0.24424050205816858,
+    "top_3_accuracy": 0.5212902355084689
+  },
+  "dataset": "data/processed/val.jsonl",
+  "error_sample_size": 200,
+  "examples": 74095,
+  "notes": [
+    "Specific-action predictions are a frequency baseline, not the final Stage 2 classifiers.",
+    "The test split remains untouched."
+  ],
+  "test_set_evaluated": false
+}

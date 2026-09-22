@@ -1,0 +1,30 @@
+{
+  "dataset": "gen8ou_10k",
+  "test_set_evaluated": false,
+  "train_examples": 343334,
+  "validation_examples": 74095,
+  "train_labels": {
+    "move": 259274,
+    "switch": 84060
+  },
+  "majority_baseline": {
+    "accuracy": 0.7520210540522303,
+    "balanced_accuracy": 0.5
+  },
+  "xgboost": {
+    "accuracy": 0.7724947702274108,
+    "balanced_accuracy": 0.5919858220182634,
+    "move_precision": 0.7899519532066012,
+    "move_recall": 0.9501085766587104,
+    "switch_precision": 0.6071781828458387,
+    "switch_recall": 0.23386306737781648,
+    "confusion_matrix": [
+      [52941, 2780],
+      [14077, 4297]
+    ]
+  },
+  "notes": [
+    "The test split remains untouched for final evaluation.",
+    "The model clears the Phase 1 action-type accuracy target, but switch recall needs improvement."
+  ]
+}

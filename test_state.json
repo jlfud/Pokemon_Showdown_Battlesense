@@ -1,0 +1,43 @@
+{
+  "turn_number": 5,
+
+  "active_species": "pee",
+  "active_hp": 0.85,
+  "active_status": "none",
+  "active_atk_boost": 0,
+  "active_def_boost": 0,
+  "active_spa_boost": 0,
+  "active_spd_boost": 0,
+  "active_spe_boost": 0,
+
+  "opponent_species": "Whiscash",
+  "opponent_hp": 0.72,
+  "opponent_status": "none",
+  "opponent_atk_boost": 6,
+  "opponent_def_boost": 0,
+  "opponent_spa_boost": 6,
+  "opponent_spd_boost": 0,
+  "opponent_spe_boost": 0,
+
+  "team_remaining": 5,
+  "opponent_remaining": 4,
+
+  "weather": "none",
+  "terrain": "none",
+
+  "own_stealth_rock": 1,
+  "own_spikes": 0,
+  "own_toxic_spikes": 0,
+  "own_sticky_web": 0,
+
+  "opponent_stealth_rock": 0,
+  "opponent_spikes": 1,
+  "opponent_toxic_spikes": 0,
+  "opponent_sticky_web": 0,
+  "available_switches": [
+  "Corviknight",
+  "Clefable",
+  "Dragapult",
+  "Toxapex"
+]
+}

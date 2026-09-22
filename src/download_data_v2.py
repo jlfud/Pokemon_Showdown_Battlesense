@@ -9,20 +9,20 @@ This version:
 """
 
 from datasets import load_dataset
+import argparse
 import json
 from pathlib import Path
 from tqdm import tqdm
-import time
 
 
 def download_battles_resumable(
-    target_count=50000,
+    target_count=10000,
     min_rating=1200,
     max_rating=1800,
     format_id="gen8ou",
     output_dir="data/raw",
     batch_size=1000,
-    max_process=200000  # Stop after checking this many battles if target not reached
+    max_process=30000000  # Stop after checking this many battles if target not reached
 ):
     """
     Download battles with resumable checkpoints.
@@ -42,10 +42,17 @@ def download_battles_resumable(
     output_file = output_path / f"{format_id}_battles.jsonl"
 
     # Check if we have existing data
-    existing_count = 0
+    existing_ids = set()
     if output_file.exists():
         with open(output_file) as f:
-            existing_count = sum(1 for _ in f)
+            for line in f:
+                try:
+                    battle_id = json.loads(line).get("id")
+                except json.JSONDecodeError:
+                    continue
+                if battle_id:
+                    existing_ids.add(battle_id)
+        existing_count = len(existing_ids)
         print(f"Found {existing_count} existing battles, resuming download...")
 
         if existing_count >= target_count:
@@ -54,6 +61,7 @@ def download_battles_resumable(
     else:
         # Create new file
         output_file.touch()
+        existing_count = 0
 
     remaining = target_count - existing_count
 
@@ -66,7 +74,14 @@ def download_battles_resumable(
     ds = load_dataset(
         "milkkarten/pokemon-showdown-replays-merged",
         split="train",
-        streaming=True
+        streaming=True,
+        # Parquet predicate pushdown avoids iterating over millions of rows
+        # from unrelated formats and rating bands.
+        filters=[
+            ("formatid", "=", format_id),
+            ("rating", ">=", float(min_rating)),
+            ("rating", "<=", float(max_rating)),
+        ],
     )
 
     battles_saved = 0
@@ -84,9 +99,15 @@ def download_battles_resumable(
                 if battle.get("formatid") == format_id:
                     rating = battle.get("rating")
                     if rating is not None and min_rating <= rating <= max_rating:
+                        battle_id = battle.get("id")
+                        if battle_id in existing_ids:
+                            continue
                         # Save battle
                         f.write(json.dumps(battle) + '\n')
-                        f.flush()  # Ensure data is written
+                        if battles_saved % batch_size == 0:
+                            f.flush()
+                        if battle_id:
+                            existing_ids.add(battle_id)
                         battles_saved += 1
                         pbar.update(1)
 
@@ -130,7 +151,8 @@ def download_battles_resumable(
         'format_id': format_id,
         'min_rating': min_rating,
         'max_rating': max_rating,
-        'battles_processed': battles_processed
+        'battles_processed': battles_processed,
+        'target_count': target_count
     }
 
     metadata_file = output_path / "metadata.json"
@@ -164,16 +186,28 @@ def preview_data(output_file="data/raw/gen8ou_battles.jsonl", num_samples=3):
             print()
 
 
-if __name__ == "__main__":
-    # Download data (resumable) - NO LIMIT, scan entire dataset
-    output_file = download_battles_resumable(
-        target_count=50000,
-        min_rating=1200,
-        max_rating=1800,
-        format_id="gen8ou",
-        batch_size=1000,
-        max_process=30000000  # Scan up to 30M battles (entire dataset)
-    )
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target-count", type=int, default=10000)
+    parser.add_argument("--min-rating", type=int, default=1200)
+    parser.add_argument("--max-rating", type=int, default=1800)
+    parser.add_argument("--format-id", default="gen8ou")
+    parser.add_argument("--output-dir", default="data/raw")
+    parser.add_argument("--batch-size", type=int, default=1000)
+    parser.add_argument("--max-process", type=int, default=30000000)
+    args = parser.parse_args()
 
-    # Preview the data
+    output_file = download_battles_resumable(
+        target_count=args.target_count,
+        min_rating=args.min_rating,
+        max_rating=args.max_rating,
+        format_id=args.format_id,
+        output_dir=args.output_dir,
+        batch_size=args.batch_size,
+        max_process=args.max_process,
+    )
     preview_data(output_file)
+
+
+if __name__ == "__main__":
+    main()
