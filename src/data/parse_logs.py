@@ -72,6 +72,14 @@ class BattleState:
     revealed_moves: dict[str, dict[str, set[str]]] = field(
         default_factory=lambda: {side: {} for side in SIDES}
     )
+    # HP and status of Pokemon that have left the field, keyed by team-preview
+    # name.  Pokemon never sent out are at full HP with no status.
+    bench: dict[str, dict[str, tuple[float, str]]] = field(
+        default_factory=lambda: {side: {} for side in SIDES}
+    )
+    nicknames: dict[str, dict[str, str]] = field(
+        default_factory=lambda: {side: {} for side in SIDES}
+    )
 
 
 def _side_from_ident(value: str) -> str | None:
@@ -160,7 +168,17 @@ def _perspective_features(snapshot: BattleState, actor: str) -> dict[str, Any]:
     own = snapshot.active[actor]
     foe = snapshot.active[opponent]
     own_species = _canonical_team_species(own.species, snapshot.preview[actor])
+    foe_species = _canonical_team_species(foe.species, snapshot.preview[opponent])
     revealed = sorted(snapshot.revealed_moves[actor].get(own_species, ()))
+    available_switches = [
+        species
+        for species in snapshot.preview[actor]
+        if species != own_species and species not in snapshot.fainted_species[actor]
+    ]
+    bench = {
+        species: snapshot.bench[actor].get(species, (1.0, "none"))
+        for species in available_switches
+    }
     features: dict[str, Any] = {
         "actor_side": actor,
         "actor_player": snapshot.players[actor],
@@ -174,17 +192,18 @@ def _perspective_features(snapshot: BattleState, actor: str) -> dict[str, Any]:
         "opponent_species": foe.species,
         "opponent_hp": foe.hp,
         "opponent_status": foe.status,
+        "opponent_revealed_moves": sorted(
+            snapshot.revealed_moves[opponent].get(foe_species, ())
+        ),
         "team_remaining": snapshot.remaining[actor],
         "opponent_remaining": snapshot.remaining[opponent],
         "weather": snapshot.weather,
         "terrain": snapshot.terrain,
         "team_species": list(snapshot.preview[actor]),
         "opponent_team_species": list(snapshot.preview[opponent]),
-        "available_switches": [
-            species
-            for species in snapshot.preview[actor]
-            if species != own_species and species not in snapshot.fainted_species[actor]
-        ],
+        "available_switches": available_switches,
+        "bench_hp": {species: hp for species, (hp, _status) in bench.items()},
+        "bench_status": {species: status for species, (_hp, status) in bench.items()},
     }
     for stat in BOOST_STATS:
         features[f"active_{stat}_boost"] = own.boosts[stat]
@@ -279,6 +298,14 @@ def parse_battle(record: dict[str, Any]) -> list[dict[str, Any]]:
                     "switch",
                     _canonical_team_species(species, state.preview[side]),
                 )
+            outgoing = state.active[side]
+            if event != "replace" and outgoing.species != "unknown":
+                state.bench[side][
+                    _canonical_team_species(outgoing.species, state.preview[side])
+                ] = (outgoing.hp, outgoing.status)
+            state.nicknames[side][_nickname_from_ident(parts[1])] = (
+                _canonical_team_species(species, state.preview[side])
+            )
             hp, status, fainted = _condition(parts[3])
             state.active[side] = PokemonState(
                 species=species,
@@ -327,7 +354,15 @@ def parse_battle(record: dict[str, Any]) -> list[dict[str, Any]]:
                 state.active[side].status = parts[2]
         elif event == "-curestatus" and len(parts) >= 2:
             side = _side_from_ident(parts[1])
-            if side:
+            if not side:
+                continue
+            if parts[1].strip()[2:3] == ":":
+                # "p1: Nickname" names a benched Pokemon, e.g. cured by Heal Bell.
+                species = state.nicknames[side].get(_nickname_from_ident(parts[1]))
+                if species in state.bench[side]:
+                    hp, _status = state.bench[side][species]
+                    state.bench[side][species] = (hp, "none")
+            else:
                 state.active[side].status = "none"
         elif event in {"-boost", "-unboost", "-setboost"} and len(parts) >= 4:
             side = _side_from_ident(parts[1])

@@ -4,14 +4,14 @@
   "active_hp": 0.85,
   "active_status": "none",
   "active_last_move": "Earthquake",
-  "active_revealed_moves": ["Earthquake", "Stealth Rock"],
-  "active_revealed_move_count": 2,
+  "active_revealed_moves": ["Earthquake", "Stealth Rock", "Rock Slide"],
+  "active_revealed_move_count": 3,
   "active_atk_boost": 0,
   "active_def_boost": 0,
   "active_spa_boost": 0,
   "active_spd_boost": 0,
   "active_spe_boost": 0,
-  "opponent_species": "Heatran",
+  "opponent_species": "Charizard",
   "opponent_hp": 0.72,
   "opponent_status": "none",
   "opponent_atk_boost": 0,
@@ -34,7 +34,7 @@
   "available_switches": [
     "Corviknight",
     "Clefable",
-    "Heatran",
+    "Charizard",
     "Dragapult",
     "Toxapex"
   ]

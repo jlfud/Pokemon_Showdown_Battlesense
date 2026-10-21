@@ -196,6 +196,43 @@ class ParseBattleTests(unittest.TestCase):
         self.assertEqual(p1[4]["active_last_move"], "Dragon Dance")
         self.assertEqual(p1[4]["active_revealed_move_count"], 2)
 
+    def test_tracks_bench_hp_status_and_heal_bell(self):
+        replay = """|poke|p1|Blissey|
+|poke|p1|Toxapex|
+|poke|p1|Corviknight|
+|poke|p2|Gengar|
+|start
+|switch|p1a: Pinky|Blissey, F|100/100
+|switch|p2a: Gengar|Gengar|100/100
+|turn|1
+|switch|p1a: Pex|Toxapex|100/100
+|move|p2a: Gengar|Sludge Bomb|p1a: Pex
+|-damage|p1a: Pex|60/100 psn
+|turn|2
+|switch|p1a: Pinky|Blissey, F|100/100
+|move|p2a: Gengar|Will-O-Wisp|p1a: Pinky
+|-status|p1a: Pinky|brn
+|turn|3
+|move|p1a: Pinky|Heal Bell|p1a: Pinky
+|-curestatus|p1: Pex|psn|[msg]
+|move|p2a: Gengar|Shadow Ball|p1a: Pinky
+|turn|4
+|move|p1a: Pinky|Soft-Boiled|p1a: Pinky
+"""
+        examples = parse_battle(
+            {"id": "bench", "formatid": "gen8ou", "rating": 1400, "log": replay}
+        )
+        p1 = {row["turn_number"]: row for row in examples if row["actor_side"] == "p1"}
+        self.assertEqual(p1[3]["bench_hp"], {"Toxapex": 0.6, "Corviknight": 1.0})
+        self.assertEqual(p1[3]["bench_status"], {"Toxapex": "psn", "Corviknight": "none"})
+        self.assertEqual(p1[3]["active_status"], "brn")
+        self.assertEqual(p1[4]["bench_status"]["Toxapex"], "none")
+        self.assertEqual(p1[4]["active_status"], "brn")
+        self.assertEqual(
+            p1[4]["opponent_revealed_moves"],
+            ["Shadow Ball", "Sludge Bomb", "Will-O-Wisp"],
+        )
+
     def test_revealed_moves_persist_across_switches_but_last_move_resets(self):
         ferrothorn_return = next(
             row

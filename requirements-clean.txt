@@ -19,6 +19,9 @@ pyarrow>=25.0.0,<26.0.0
 # XGBoost action-type model
 xgboost>=3.0.0,<4.0.0
 
+# Gen 8 Pokedex, move data and type chart for ranker features
+poke-env==0.16.1
+
 # Flask API (will add in Phase 3)
 # flask>=3.0.0
 
