@@ -45,7 +45,9 @@ python -m src.models.model_manager examples/stage2_state.json
 `active_*` describes the Pokemon whose action is being predicted. When using
 the model as an assistant, that is the opponent; `opponent_*` describes the
 user's Pokemon. `available_switches` must list the predicted side's living bench
-Pokemon.
+Pokemon. `active_last_move` is the move that Pokemon used last turn (`"none"` if
+it just switched in), and `active_revealed_moves` lists every move it has used
+so far this battle.
 
 ## System Architecture
 

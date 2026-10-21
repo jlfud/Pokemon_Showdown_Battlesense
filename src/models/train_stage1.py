@@ -36,6 +36,7 @@ IGNORED_COLUMNS = {
     "team_species",
     "opponent_team_species",
     "available_switches",
+    "active_revealed_moves",
 }
 
 

@@ -85,6 +85,8 @@ def evaluate(
             row["active_species"],
             row["opponent_species"],
             candidates=candidates,
+            revealed_moves=row["active_revealed_moves"],
+            last_move=row["active_last_move"],
         )
         conditional_ranked = sorted(
             conditional, key=conditional.get, reverse=True

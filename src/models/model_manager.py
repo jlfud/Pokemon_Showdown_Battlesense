@@ -11,7 +11,12 @@ import joblib
 import pandas as pd
 from xgboost import XGBClassifier
 
-from src.models.train_specific_baselines import MATCHUP_SEPARATOR
+from src.models.train_specific_baselines import (
+    MATCHUP_SEPARATOR,
+    REVEAL_GROUPS,
+    reveal_bucket,
+    reveal_group,
+)
 from src.models.train_stage1 import IGNORED_COLUMNS
 
 
@@ -20,6 +25,14 @@ def _probabilities(counts: Counter[str]) -> dict[str, float]:
     if not total:
         return {}
     return {target: count / total for target, count in counts.items()}
+
+
+def _share(scores: dict[str, float], targets: list[str], mass: float) -> dict[str, float]:
+    """Split ``mass`` across ``targets`` in proportion to their base scores."""
+    total = sum(scores.get(target, 0.0) for target in targets)
+    if total <= 0:
+        return {target: mass / len(targets) for target in targets}
+    return {target: mass * scores.get(target, 0.0) / total for target in targets}
 
 
 class SpecificActionBaseline:
@@ -38,6 +51,10 @@ class SpecificActionBaseline:
             action: {matchup: Counter(counts) for matchup, counts in groups.items()}
             for action, groups in artifact["matchup_counts"].items()
         }
+        self.reveal_counts = {
+            bucket: Counter(counts)
+            for bucket, counts in artifact.get("reveal_counts", {}).items()
+        }
 
     @classmethod
     def load(cls, path: Path) -> "SpecificActionBaseline":
@@ -50,16 +67,24 @@ class SpecificActionBaseline:
         active_species: str,
         opponent_species: str,
         candidates: Iterable[str] | None = None,
+        revealed_moves: Iterable[str] = (),
+        last_move: str = "none",
     ) -> dict[str, float]:
         global_counts = self.global_counts[action_type]
         species_counts = self.species_counts[action_type].get(active_species, Counter())
         matchup_key = f"{active_species}{MATCHUP_SEPARATOR}{opponent_species}"
         matchup_counts = self.matchup_counts[action_type].get(matchup_key, Counter())
+        revealed_moves = set(revealed_moves)
+        use_reveals = action_type == "move" and bool(self.reveal_counts)
 
         if candidates is None:
             targets = set(species_counts or global_counts)
         else:
             targets = {target for target in candidates if target}
+        if use_reveals:
+            targets |= revealed_moves
+            if last_move != "none":
+                targets.add(last_move)
         if not targets:
             return {}
 
@@ -79,12 +104,31 @@ class SpecificActionBaseline:
             }
         else:
             scores = species_prob
+        if use_reveals:
+            scores = self._reweight_by_reveals(scores, revealed_moves, last_move)
 
         score_total = sum(scores.values())
         if score_total <= 0:
             uniform = 1.0 / len(targets)
             return {target: uniform for target in targets}
         return {target: score / score_total for target, score in scores.items()}
+
+    def _reweight_by_reveals(
+        self, scores: dict[str, float], revealed_moves: set[str], last_move: str
+    ) -> dict[str, float]:
+        """Give the last-used, other revealed, and unrevealed moves the share of
+        probability each received in training, given how much was revealed."""
+        groups: dict[str, list[str]] = {group: [] for group in REVEAL_GROUPS}
+        for target in scores:
+            groups[reveal_group(target, revealed_moves, last_move)].append(target)
+        counts = self.reveal_counts.get(
+            reveal_bucket(len(revealed_moves), last_move), Counter()
+        )
+        reweighted: dict[str, float] = {}
+        for group, targets in groups.items():
+            if targets:
+                reweighted.update(_share(scores, targets, counts[group] + 1.0))
+        return reweighted
 
 
 class ModelManager:
@@ -140,7 +184,12 @@ class ModelManager:
             "active_species": state["active_species"],
             "opponent_species": state["opponent_species"],
         }
-        move_distribution = self.specific_model.distribution("move", **context)
+        move_distribution = self.specific_model.distribution(
+            "move",
+            **context,
+            revealed_moves=state.get("active_revealed_moves", []),
+            last_move=state.get("active_last_move", "none"),
+        )
         switch_distribution = self.specific_model.distribution(
             "switch", **context, candidates=available_switches
         )

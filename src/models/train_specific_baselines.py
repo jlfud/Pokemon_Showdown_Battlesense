@@ -16,6 +16,18 @@ from typing import Any, Iterable
 
 
 MATCHUP_SEPARATOR = "\t"
+REVEAL_GROUPS = ("last", "revealed", "unrevealed")
+
+
+def reveal_bucket(revealed_count: int, last_move: str) -> str:
+    """Group move decisions by how much of the moveset the opponent has seen."""
+    return f"{min(revealed_count, 4)}:{'last' if last_move != 'none' else 'nolast'}"
+
+
+def reveal_group(target: str, revealed_moves: Iterable[str], last_move: str) -> str:
+    if target == last_move:
+        return "last"
+    return "revealed" if target in revealed_moves else "unrevealed"
 
 
 def _read_jsonl(path: Path) -> Iterable[dict[str, Any]]:
@@ -39,6 +51,7 @@ def train(input_path: Path, output_path: Path) -> dict[str, Any]:
         "move": defaultdict(Counter),
         "switch": defaultdict(Counter),
     }
+    reveal_counts: defaultdict[str, Counter[str]] = defaultdict(Counter)
     examples = Counter()
 
     for row in _read_jsonl(input_path):
@@ -53,6 +66,11 @@ def train(input_path: Path, output_path: Path) -> dict[str, Any]:
         species_counts[action_type][active][target] += 1
         matchup_counts[action_type][matchup][target] += 1
         examples[action_type] += 1
+        if action_type == "move":
+            revealed = row["active_revealed_moves"]
+            last_move = row["active_last_move"]
+            bucket = reveal_bucket(len(revealed), last_move)
+            reveal_counts[bucket][reveal_group(target, revealed, last_move)] += 1
 
     artifact = {
         "model_type": "specific_action_frequency_baseline",
@@ -67,6 +85,7 @@ def train(input_path: Path, output_path: Path) -> dict[str, Any]:
         "matchup_counts": {
             action: _serializable(counts) for action, counts in matchup_counts.items()
         },
+        "reveal_counts": _serializable(reveal_counts),
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as handle:

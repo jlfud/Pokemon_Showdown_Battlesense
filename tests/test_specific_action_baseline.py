@@ -38,6 +38,28 @@ class SpecificActionBaselineTests(unittest.TestCase):
         self.assertEqual(set(distribution), {"Clefable", "Toxapex"})
         self.assertAlmostEqual(sum(distribution.values()), 1.0)
 
+    def test_move_distribution_favors_last_and_revealed_moves(self):
+        model = SpecificActionBaseline(
+            {
+                **ARTIFACT,
+                "reveal_counts": {
+                    "2:last": {"last": 60, "revealed": 25, "unrevealed": 15},
+                },
+            }
+        )
+        distribution = model.distribution(
+            "move",
+            "Garchomp",
+            "Heatran",
+            revealed_moves=["Swords Dance", "Scale Shot"],
+            last_move="Swords Dance",
+        )
+        self.assertAlmostEqual(sum(distribution.values()), 1.0)
+        self.assertIn("Scale Shot", distribution)
+        self.assertAlmostEqual(distribution["Swords Dance"], 61 / 103)
+        self.assertAlmostEqual(distribution["Scale Shot"], 26 / 103)
+        self.assertAlmostEqual(distribution["Earthquake"], 16 / 103)
+
 
 if __name__ == "__main__":
     unittest.main()

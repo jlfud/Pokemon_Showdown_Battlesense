@@ -1,30 +1,36 @@
 {
   "dataset": "gen8ou_10k",
   "test_set_evaluated": false,
-  "train_examples": 343334,
-  "validation_examples": 74095,
+  "train_examples": 342443,
+  "validation_examples": 73909,
   "train_labels": {
-    "move": 259274,
-    "switch": 84060
+    "move": 258442,
+    "switch": 84001
   },
   "majority_baseline": {
-    "accuracy": 0.7520210540522303,
+    "accuracy": 0.7516134706192751,
     "balanced_accuracy": 0.5
   },
   "xgboost": {
-    "accuracy": 0.7724947702274108,
-    "balanced_accuracy": 0.5919858220182634,
-    "move_precision": 0.7899519532066012,
-    "move_recall": 0.9501085766587104,
-    "switch_precision": 0.6071781828458387,
-    "switch_recall": 0.23386306737781648,
+    "accuracy": 0.7793502821036681,
+    "balanced_accuracy": 0.6731054680441744,
+    "move_precision": 0.8325847076970015,
+    "move_recall": 0.8842325070655794,
+    "switch_precision": 0.5687365879828327,
+    "switch_recall": 0.46197842902276937,
     "confusion_matrix": [
-      [52941, 2780],
-      [14077, 4297]
+      [
+        49120,
+        6431
+      ],
+      [
+        9877,
+        8481
+      ]
     ]
   },
   "notes": [
     "The test split remains untouched for final evaluation.",
-    "The model clears the Phase 1 action-type accuracy target, but switch recall needs improvement."
+    "Adding active_last_move and active_revealed_move_count roughly doubled switch recall over the first baseline."
   ]
 }

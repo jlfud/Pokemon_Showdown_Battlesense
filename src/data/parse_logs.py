@@ -2,8 +2,9 @@
 
 The parser creates at most one example per side per turn.  Features are copied
 from the state at the ``|turn|`` marker, before either player's choice is
-revealed.  Forced replacements and pivot-move switches are state updates, not
-training labels.
+revealed.  Forced replacements, pivot-move switches, item- or ability-forced
+switches, and moves the player did not select (lock-ins, reflected or copied
+moves) are state updates, not training labels.
 """
 
 from __future__ import annotations
@@ -21,6 +22,11 @@ HAZARD_LIMITS = {
     "toxic_spikes": 2,
     "sticky_web": 1,
 }
+# Item and ability activations that force the holder out mid-turn.
+FORCED_SWITCH_ITEMS = {"Eject Button", "Eject Pack"}
+FORCED_SWITCH_ABILITIES = {"ability: Emergency Exit", "ability: Wimp Out"}
+# ``[from]`` sources whose move still belongs to the user's own moveset.
+OWN_MOVE_SOURCES = {"lockedmove", "Sleep Talk"}
 
 
 @dataclass
@@ -32,6 +38,7 @@ class PokemonState:
     boosts: dict[str, int] = field(
         default_factory=lambda: {stat: 0 for stat in BOOST_STATS}
     )
+    last_move: str = "none"
 
 
 @dataclass
@@ -62,6 +69,9 @@ class BattleState:
         default_factory=lambda: {side: set() for side in SIDES}
     )
     needs_replacement: set[str] = field(default_factory=set)
+    revealed_moves: dict[str, dict[str, set[str]]] = field(
+        default_factory=lambda: {side: {} for side in SIDES}
+    )
 
 
 def _side_from_ident(value: str) -> str | None:
@@ -149,6 +159,8 @@ def _perspective_features(snapshot: BattleState, actor: str) -> dict[str, Any]:
     opponent = "p2" if actor == "p1" else "p1"
     own = snapshot.active[actor]
     foe = snapshot.active[opponent]
+    own_species = _canonical_team_species(own.species, snapshot.preview[actor])
+    revealed = sorted(snapshot.revealed_moves[actor].get(own_species, ()))
     features: dict[str, Any] = {
         "actor_side": actor,
         "actor_player": snapshot.players[actor],
@@ -156,6 +168,9 @@ def _perspective_features(snapshot: BattleState, actor: str) -> dict[str, Any]:
         "active_species": own.species,
         "active_hp": own.hp,
         "active_status": own.status,
+        "active_last_move": own.last_move,
+        "active_revealed_moves": revealed,
+        "active_revealed_move_count": len(revealed),
         "opponent_species": foe.species,
         "opponent_hp": foe.hp,
         "opponent_status": foe.status,
@@ -168,7 +183,7 @@ def _perspective_features(snapshot: BattleState, actor: str) -> dict[str, Any]:
         "available_switches": [
             species
             for species in snapshot.preview[actor]
-            if species != own.species and species not in snapshot.fainted_species[actor]
+            if species != own_species and species not in snapshot.fainted_species[actor]
         ],
     }
     for stat in BOOST_STATS:
@@ -276,8 +291,26 @@ def parse_battle(record: dict[str, Any]) -> list[dict[str, Any]]:
                 state.needs_replacement.add(side)
         elif event == "move" and len(parts) >= 3:
             side = _side_from_ident(parts[1])
-            if side and side not in state.needs_replacement:
-                add_example(side, "move", parts[2])
+            if not side:
+                continue
+            move = parts[2]
+            source = next(
+                (
+                    value[len("[from]") :].strip()
+                    for value in parts[3:]
+                    if value.startswith("[from]")
+                ),
+                None,
+            )
+            if source is None and side not in state.needs_replacement:
+                add_example(side, "move", move)
+            if source is None or source in OWN_MOVE_SOURCES:
+                species = _canonical_team_species(
+                    state.active[side].species, state.preview[side]
+                )
+                state.revealed_moves[side].setdefault(species, set()).add(move)
+                if source != "Sleep Talk":
+                    state.active[side].last_move = move
         elif event in {"-damage", "-heal", "-sethp"} and len(parts) >= 3:
             side = _side_from_ident(parts[1])
             if side:
@@ -322,9 +355,20 @@ def parse_battle(record: dict[str, Any]) -> list[dict[str, Any]]:
             identity = parts[1].strip()
             if side and identity not in state.fainted:
                 state.fainted.add(identity)
-                state.fainted_species[side].add(state.active[side].species)
+                state.fainted_species[side].add(
+                    _canonical_team_species(state.active[side].species, state.preview[side])
+                )
                 state.remaining[side] = max(0, state.remaining[side] - 1)
                 state.active[side].hp = 0.0
+                state.needs_replacement.add(side)
+        elif event == "-enditem" and len(parts) >= 3:
+            side = _side_from_ident(parts[1])
+            activated = not any(value.startswith("[from]") for value in parts[3:])
+            if side and activated and parts[2] in FORCED_SWITCH_ITEMS:
+                state.needs_replacement.add(side)
+        elif event == "-activate" and len(parts) >= 3:
+            side = _side_from_ident(parts[1])
+            if side and parts[2] in FORCED_SWITCH_ABILITIES:
                 state.needs_replacement.add(side)
         elif event == "-weather" and len(parts) >= 2:
             weather = _slug(parts[1])
