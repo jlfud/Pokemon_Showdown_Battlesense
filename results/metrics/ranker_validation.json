@@ -1,0 +1,124 @@
+{
+  "best_iteration": 1799,
+  "by_action_type": {
+    "move": {
+      "candidate_coverage": 0.9582005724469407,
+      "examples": 55551,
+      "top_1_accuracy": 0.47270076146243994,
+      "top_3_accuracy": 0.7620024842037048
+    },
+    "switch": {
+      "candidate_coverage": 0.9998910556705524,
+      "examples": 18358,
+      "top_1_accuracy": 0.19353960126375422,
+      "top_3_accuracy": 0.5477720884627955
+    }
+  },
+  "by_turn": {
+    "1-10": {
+      "candidate_coverage": 0.9638501263597407,
+      "examples": 27303,
+      "top_1_accuracy": 0.374720726660074,
+      "top_3_accuracy": 0.673552356883859
+    },
+    "11-20": {
+      "candidate_coverage": 0.9653776978417267,
+      "examples": 22240,
+      "top_1_accuracy": 0.4012140287769784,
+      "top_3_accuracy": 0.7037769784172662
+    },
+    "21-30": {
+      "candidate_coverage": 0.9716617896195904,
+      "examples": 12986,
+      "top_1_accuracy": 0.42977052210072386,
+      "top_3_accuracy": 0.7339442476513168
+    },
+    "31+": {
+      "candidate_coverage": 0.9825131810193322,
+      "examples": 11380,
+      "top_1_accuracy": 0.4461335676625659,
+      "top_3_accuracy": 0.7744288224956063
+    }
+  },
+  "combined": {
+    "candidate_coverage": 0.9685559268830589,
+    "examples": 73909,
+    "log_loss_covered": 1.73876301384802,
+    "top_1_accuracy": 0.40336088974279183,
+    "top_3_accuracy": 0.7087905397177611
+  },
+  "dataset": "data/processed/val.jsonl",
+  "move_candidates_per_species": 10,
+  "notes": [
+    "Temperature and early stopping use the validation split; the test split remains untouched.",
+    "log_loss_covered excludes decisions whose actual action is not a candidate."
+  ],
+  "objective": "binary",
+  "temperature": 1.1659144011798324,
+  "test_set_evaluated": false,
+  "top_features_by_gain": [
+    [
+      "move_is_revealed",
+      266.3497009277344
+    ],
+    [
+      "move_p_matchup",
+      111.92086791992188
+    ],
+    [
+      "move_hazard_already_set",
+      77.5970458984375
+    ],
+    [
+      "move_is_last",
+      56.93663024902344
+    ],
+    [
+      "active_just_switched_in",
+      54.0218391418457
+    ],
+    [
+      "move_hazard_removal",
+      52.8564453125
+    ],
+    [
+      "move_status",
+      48.31680679321289
+    ],
+    [
+      "move_recovery",
+      47.48067855834961
+    ],
+    [
+      "switch_threatened",
+      35.30417251586914
+    ],
+    [
+      "move_hazard",
+      34.84809112548828
+    ],
+    [
+      "move_pivot",
+      28.897747039794922
+    ],
+    [
+      "active_revealed_move_count",
+      27.365419387817383
+    ],
+    [
+      "move_setup",
+      25.87628746032715
+    ],
+    [
+      "move_protect",
+      25.84136390686035
+    ],
+    [
+      "move_effectiveness",
+      24.99226951599121
+    ]
+  ],
+  "train_candidate_rows": 4410680,
+  "train_decisions": 331287,
+  "trained_at": "2026-10-21T21:31:44.342420+00:00"
+}

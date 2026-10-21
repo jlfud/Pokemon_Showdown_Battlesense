@@ -1,7 +1,8 @@
 {
-  "total_battles": 50000,
+  "total_battles": 10000,
   "format_id": "gen8ou",
   "min_rating": 1200,
   "max_rating": 1800,
-  "battles_processed": 23053947
+  "battles_processed": 10000,
+  "target_count": 10000
 }

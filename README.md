@@ -7,7 +7,47 @@
 
 ## Overview
 
-Build an AI assistant for Pokemon Showdown that predicts opponent actions during Gen 9 OU battles. The system uses machine learning to analyze visible game state and predict the opponent's next move or switch with probability distributions. A browser extension displays these predictions to help players make strategic decisions.
+Build an AI assistant for Pokemon Showdown that predicts opponent actions during Gen 8 OU battles. The system uses machine learning to analyze visible game state and predict the opponent's next move or switch with probability distributions. A browser extension displays these predictions to help players make strategic decisions.
+
+## Phase 1 Quickstart
+
+The current vertical slice downloads 10,000 battles, parses voluntary actions from
+turn-start state, creates battle-grouped splits, and trains the move-versus-switch
+classifier.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-clean.txt
+
+python -m src.download_data_v2 --target-count 10000
+python -m src.data.prepare_dataset
+python -m src.models.train_stage1
+python -m unittest discover -v
+```
+
+Raw, processed, and trained artifacts are intentionally ignored by Git because
+they can be regenerated with these commands.
+
+### Phase 2 benchmark
+
+The first specific-action benchmark predicts move names directly because replay
+logs do not expose a stable ordering for an opponent's four hidden move slots.
+It also masks switch predictions to the legal team-preview candidates.
+
+```bash
+python -m src.data.prepare_dataset
+python -m src.models.train_specific_baselines
+python -m src.evaluation.evaluate_stage2
+python -m src.models.model_manager examples/stage2_state.json
+```
+
+`active_*` describes the Pokemon whose action is being predicted. When using
+the model as an assistant, that is the opponent; `opponent_*` describes the
+user's Pokemon. `available_switches` must list the predicted side's living bench
+Pokemon. `active_last_move` is the move that Pokemon used last turn (`"none"` if
+it just switched in), and `active_revealed_moves` lists every move it has used
+so far this battle.
 
 ## System Architecture
 
@@ -18,7 +58,7 @@ The system consists of four main components connected via a simple HTTP API:
 **Parser** (`parse_logs.py`)
 - Downloads Gen 8 OU replays from Hugging Face dataset `milkkarten/pokemon-showdown-replays-merged`
 - Filters battles with player ratings between 1200-1800
-- Samples 50,000-100,000 battles randomly
+- Uses 10,000 battles for Phase 1; scale up after the pipeline is validated
 - Parses Pokemon Showdown log format into structured game states
 - Extracts turn-by-turn training examples (game state → opponent action pairs)
 
@@ -93,9 +133,9 @@ The system consists of four main components connected via a simple HTTP API:
 ### Data Source
 
 **Hugging Face Dataset**: `milkkarten/pokemon-showdown-replays-merged`
-- Format filter: `[Gen 9] OU`
+- Format filter: `[Gen 8] OU`
 - Rating filter: 1200 ≤ rating ≤ 1800
-- Sample size: 50,000-100,000 battles
+- Sample size: 10,000 battles for Phase 1
 - Download format: Parquet files using `datasets` library
 
 ### Log Parsing
@@ -113,14 +153,14 @@ Pokemon Showdown logs are text-based protocol messages:
 **Parser responsibilities:**
 - Track turn boundaries
 - Maintain game state (active Pokemon, HP, status, boosts)
-- Record team revelation (Gen 9 OU has team preview)
+- Record team preview and later battle-state revelations
 - Identify player actions (moves vs switches)
 - Handle edge cases (faints, forced switches, disabled moves)
 
 **Output format:**
 ```python
 {
-  "battle_id": "gen9ou-123456789",
+  "battle_id": "gen8ou-123456789",
   "turn_number": 5,
   "features": [...],  # 56-element feature vector
   "label_action_type": 0,  # 0=move, 1=switch
@@ -718,7 +758,7 @@ python src/api/server.py
    - Click "Load unpacked"
    - Select `extension/` folder
 
-5. Navigate to play.pokemonshowdown.com and start a Gen 9 OU battle
+5. Navigate to play.pokemonshowdown.com and start a Gen 8 OU battle
 
 6. Predictions appear automatically each turn
 
@@ -734,7 +774,7 @@ python src/api/server.py
 **Goal**: Prove the concept with simplest version
 
 **Steps**:
-1. Download 10k Gen 9 OU battles (rating 1200-1800) from Hugging Face
+1. Download 10k Gen 8 OU battles (rating 1200-1800) from Hugging Face
 2. Build log parser to extract game states and opponent actions
 3. Create basic feature extractor (~20 features: species, HP, types, boosts only)
 4. Split data by battle_id (70/15/15)
@@ -981,7 +1021,7 @@ python src/api/server.py
 **Data limitations**:
 - Only trained on 1200-1800 rating range
 - May not generalize to very high or very low skill levels
-- Gen 9 OU meta evolves over time (model may become outdated)
+- Gen 8 OU usage patterns can drift over time (model may become outdated)
 
 **System limitations**:
 - Requires local API server (not user-friendly for non-technical users)
@@ -1012,7 +1052,7 @@ python src/api/server.py
 - **Multi-agent learning**: Model both players simultaneously
 - **Reinforcement learning**: Train agent to play optimally
 - **Meta-game analysis**: Track how predictability changes with meta shifts
-- **Cross-generation transfer**: Does Gen 9 model work on Gen 8?
+- **Cross-generation transfer**: Does the Gen 8 model transfer to Gen 9?
 
 ## Risk Mitigation
 
